@@ -1,0 +1,5 @@
+pulp>=2.8
+langchain-groq>=0.1
+langchain-core>=0.2
+pydantic>=2.0
+python-dotenv>=1.0

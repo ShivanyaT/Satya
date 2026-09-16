@@ -1,0 +1,101 @@
+[
+  {
+    "id": "p01_factory_alloc",
+    "family": "LP",
+    "text": "A company runs two factories, A and B. Factory A produces a unit of goods at a cost of $4 and can produce at most 100 units. Factory B produces a unit at a cost of $6 and can produce at most 80 units. The company must produce at least 120 units in total to meet demand. Minimize total production cost.",
+    "ground_truth": {
+      "sense": "minimize",
+      "objective": {"a": 4, "b": 6},
+      "variables": [
+        {"name": "a", "var_type": "continuous", "low_bound": 0, "up_bound": 100},
+        {"name": "b", "var_type": "continuous", "low_bound": 0, "up_bound": 80}
+      ],
+      "constraints": [
+        {"expr": {"a": 1}, "sense": "<=", "rhs": 100, "label": "factory A capacity"},
+        {"expr": {"b": 1}, "sense": "<=", "rhs": 80, "label": "factory B capacity"},
+        {"expr": {"a": 1, "b": 1}, "sense": ">=", "rhs": 120, "label": "minimum demand"}
+      ]
+    },
+    "notes": "Non-obvious part: the demand constraint is >= (a floor), not ==. A model that reads it as == will still find A optimum by luck here, but will fail on variants where == overconstrains infeasibly."
+  },
+  {
+    "id": "p02_transport",
+    "family": "LP",
+    "text": "A distributor ships a product from two warehouses to two stores. Warehouse 1 has 50 units available; Warehouse 2 has 60 units available. Store X needs at least 40 units; Store Y needs at least 55 units. Shipping cost per unit: Warehouse1->StoreX is $2, Warehouse1->StoreY is $3, Warehouse2->StoreX is $4, Warehouse2->StoreY is $1. Minimize total shipping cost while meeting all store demand without exceeding warehouse supply.",
+    "ground_truth": {
+      "sense": "minimize",
+      "objective": {"w1x": 2, "w1y": 3, "w2x": 4, "w2y": 1},
+      "variables": [
+        {"name": "w1x", "var_type": "continuous", "low_bound": 0},
+        {"name": "w1y", "var_type": "continuous", "low_bound": 0},
+        {"name": "w2x", "var_type": "continuous", "low_bound": 0},
+        {"name": "w2y", "var_type": "continuous", "low_bound": 0}
+      ],
+      "constraints": [
+        {"expr": {"w1x": 1, "w1y": 1}, "sense": "<=", "rhs": 50, "label": "warehouse 1 supply"},
+        {"expr": {"w2x": 1, "w2y": 1}, "sense": "<=", "rhs": 60, "label": "warehouse 2 supply"},
+        {"expr": {"w1x": 1, "w2x": 1}, "sense": ">=", "rhs": 40, "label": "store X demand"},
+        {"expr": {"w1y": 1, "w2y": 1}, "sense": ">=", "rhs": 55, "label": "store Y demand"}
+      ]
+    },
+    "notes": "Classic transportation structure — tests whether the agent correctly builds a 4-variable (route-level) model instead of collapsing it to 2 variables (warehouse-level)."
+  },
+  {
+    "id": "p03_knapsack_budget",
+    "family": "ILP",
+    "text": "A startup has $50,000 to invest across 4 possible projects. Project 1 costs $20,000 and returns $28,000. Project 2 costs $15,000 and returns $19,000. Project 3 costs $25,000 and returns $34,000. Project 4 costs $10,000 and returns $13,000. Each project can either be fully funded or not funded at all — no partial funding. Choose which projects to fund to maximize total return, without exceeding the budget.",
+    "ground_truth": {
+      "sense": "maximize",
+      "objective": {"p1": 28000, "p2": 19000, "p3": 34000, "p4": 13000},
+      "variables": [
+        {"name": "p1", "var_type": "binary"},
+        {"name": "p2", "var_type": "binary"},
+        {"name": "p3", "var_type": "binary"},
+        {"name": "p4", "var_type": "binary"}
+      ],
+      "constraints": [
+        {"expr": {"p1": 20000, "p2": 15000, "p3": 25000, "p4": 10000}, "sense": "<=", "rhs": 50000, "label": "budget"}
+      ]
+    },
+    "notes": "Tests whether the agent correctly uses the RETURN as the objective (not cost, not net profit=return-cost — return is stated as the number to maximize given the budget already constrains cost). A common formulation error: maximizing (return - cost) instead of return."
+  },
+  {
+    "id": "p04_shift_scheduling",
+    "family": "ILP",
+    "text": "A small cafe needs to schedule workers for 3 shifts tomorrow: morning, afternoon, evening. The morning shift needs at least 2 workers, the afternoon shift needs at least 3 workers, and the evening shift needs at least 2 workers. There are 5 available workers, and each worker can be assigned to at most one shift that day. Assigning a worker to the morning shift costs $80, afternoon costs $90, evening costs $100 (evening pays a premium). Minimize total labor cost while meeting every shift's minimum staffing.",
+    "ground_truth": {
+      "sense": "minimize",
+      "objective": {"m": 80, "a": 90, "e": 100},
+      "variables": [
+        {"name": "m", "var_type": "integer", "low_bound": 0},
+        {"name": "a", "var_type": "integer", "low_bound": 0},
+        {"name": "e", "var_type": "integer", "low_bound": 0}
+      ],
+      "constraints": [
+        {"expr": {"m": 1}, "sense": ">=", "rhs": 2, "label": "morning minimum"},
+        {"expr": {"a": 1}, "sense": ">=", "rhs": 3, "label": "afternoon minimum"},
+        {"expr": {"e": 1}, "sense": ">=", "rhs": 2, "label": "evening minimum"},
+        {"expr": {"m": 1, "a": 1, "e": 1}, "sense": "<=", "rhs": 5, "label": "total workers available"}
+      ]
+    },
+    "notes": "Deliberately over-constrained-looking: minimums sum to 7 but only 5 workers exist. This problem is actually INFEASIBLE as literally stated. Included on purpose — tests whether the agent notices infeasibility rather than confidently hallucinating a 'solution'. The verifier should report INFEASIBLE as the correct ground truth, and grade the agent on whether it also detects this."
+  },
+  {
+    "id": "p05_diet_blend",
+    "family": "LP",
+    "text": "A farm needs to mix two types of feed, Feed A and Feed B, to produce at least 10 units of protein and at least 8 units of energy per batch. Each kg of Feed A provides 2 units of protein and 1 unit of energy, and costs $3 per kg. Each kg of Feed B provides 1 unit of protein and 2 units of energy, and costs $2 per kg. Minimize the total cost of the mix while meeting both nutritional minimums.",
+    "ground_truth": {
+      "sense": "minimize",
+      "objective": {"fa": 3, "fb": 2},
+      "variables": [
+        {"name": "fa", "var_type": "continuous", "low_bound": 0},
+        {"name": "fb", "var_type": "continuous", "low_bound": 0}
+      ],
+      "constraints": [
+        {"expr": {"fa": 2, "fb": 1}, "sense": ">=", "rhs": 10, "label": "protein minimum"},
+        {"expr": {"fa": 1, "fb": 2}, "sense": ">=", "rhs": 8, "label": "energy minimum"}
+      ]
+    },
+    "notes": "Classic diet-problem structure. Good baseline case — no trick, useful as a control against the trickier problems in the set."
+  }
+]
